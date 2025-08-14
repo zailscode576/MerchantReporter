@@ -197,23 +197,29 @@ function updateReport() {
         if (itemName) {
             const itemData = itemsList.find(item => item.name === itemName);
             const price = costType === "coins" ? itemData.coins : itemData.shards + " meteor shards";
-            const line = { text: `• \`${stock}x ${itemName} - ${price}\``, sortValue: parseInt(itemData.coins.replace(/[^0-9]/g,"")) };
+            const line = { 
+                text: `• \`${stock}x ${itemName} - ${price}\``, 
+                sortValue: parseInt(itemData.coins.replace(/[^0-9]/g,"")) 
+            };
             const category = itemData.category || "Other";
             categories[category].push(line);
         }
     });
 
-    // Append each category if it has items
     for (let cat of ["Fragments", "Enchants", "Other"]) {
         if (categories[cat].length > 0) {
             let displayName = cat === "Fragments" ? "Event Summons" : cat;
-            // Sort by price descending
             categories[cat].sort((a, b) => b.sortValue - a.sortValue);
             report += `**${displayName}:**\n${categories[cat].map(item => item.text).join("\n")}\n\n`;
         }
     }
 
+    // Add timestamp at the bottom with label
+    const unixTime = Math.floor(Date.now() / 1000);
+    report += `**Report generated:** <t:${unixTime}:f>`;
+
     document.getElementById("output").value = report.trim();
+
 }
 
 function downloadReport() {
