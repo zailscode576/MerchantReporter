@@ -68,6 +68,18 @@
         border: 1px solid #555;
         resize: none;
     }
+    .credit {
+    	position: fixed;
+    	bottom: 5px;
+    	left: 10px;
+    	font-size: 12px;
+    	color: #888;
+    	opacity: 0.7;
+    }
+    .credit:hover {
+    	opacity: 1;
+    }
+
 </style>
 </head>
 <body>
@@ -247,6 +259,8 @@ document.querySelectorAll(".stock-input").forEach(input => {
     input.addEventListener("input", updateReport);
 });
 </script>
+
+<div class="credit">Made by zailscode576</div>
 
 </body>
 </html>
