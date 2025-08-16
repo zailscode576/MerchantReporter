@@ -121,10 +121,13 @@ let itemsList = [
     { name: "Midas Enchant Book", coins: "$200,000,000", shards: "750", stock: 1, category: "Enchants" },
     { name: "Glowing Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
     { name: "Titanic Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
-    { name: "Unstable Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" }
+    { name: "Unstable Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
+
+    // NEW ITEM
+    { name: "Blitz Potion", coins: "$200,000,000", shards: "?", stock: 1, category: "Potions" }
 ];
 
-// Sort enchant books from most expensive → least expensive (ties alphabetical)
+// Sort enchant books
 function parsePrice(str) {
     return parseInt(str.replace(/[^0-9]/g, ""), 10);
 }
@@ -137,6 +140,7 @@ let enchantBooks = itemsList.filter(i => i.category === "Enchants")
     });
 
 let fragments = itemsList.filter(i => i.category === "Fragments");
+let potions = itemsList.filter(i => i.category === "Potions");
 let other = itemsList.filter(i => !i.category);
 
 const container = document.getElementById("items");
@@ -148,11 +152,14 @@ for (let i = 0; i < 4; i++) {
         <label>Item ${i + 1}:</label>
         <select class="item-select">
             <option value="">-- Select Item --</option>
-            <optgroup label="Fragments">
+            <optgroup label="Event Summons">
                 ${fragments.map(item => `<option value="${item.name}">${item.name}</option>`).join("")}
             </optgroup>
             <optgroup label="Enchants">
                 ${enchantBooks.map(item => `<option value="${item.name}">${item.name}</option>`).join("")}
+            </optgroup>
+            <optgroup label="Potions">
+                ${potions.map(item => `<option value="${item.name}">${item.name}</option>`).join("")}
             </optgroup>
             <optgroup label="Other">
                 ${other.map(item => `<option value="${item.name}">${item.name}</option>`).join("")}
@@ -197,6 +204,7 @@ function updateReport() {
     const categories = {
         "Fragments": [],
         "Enchants": [],
+        "Potions": [],
         "Other": []
     };
 
@@ -219,7 +227,7 @@ function updateReport() {
         }
     });
 
-    for (let cat of ["Fragments", "Enchants", "Other"]) {
+    for (let cat of ["Fragments", "Enchants", "Potions", "Other"]) {
         if (categories[cat].length > 0) {
             let displayName = cat === "Fragments" ? "Event Summons" : cat;
             categories[cat].sort((a, b) => b.sortValue - a.sortValue);
@@ -227,12 +235,10 @@ function updateReport() {
         }
     }
 
-    // Add timestamp at the bottom with label
     const unixTime = Math.floor(Date.now() / 1000);
     report += `**Report generated:** <t:${unixTime}:f>`;
 
     document.getElementById("output").value = report.trim();
-
 }
 
 function downloadReport() {
