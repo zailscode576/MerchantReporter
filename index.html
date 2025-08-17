@@ -6,7 +6,7 @@
 <style>
     body {
         font-family: Arial, sans-serif;
-        font-size: 16px; /* Bigger font for easier reading */
+        font-size: 16px;
         margin: 20px;
         background: #1e1e2f;
         color: #ddd;
@@ -69,17 +69,36 @@
         resize: none;
     }
     .credit {
-    	position: fixed;
-    	bottom: 5px;
-    	left: 10px;
-    	font-size: 12px;
-    	color: #888;
-    	opacity: 0.7;
+        position: fixed;
+        bottom: 5px;
+        left: 10px;
+        font-size: 12px;
+        color: #888;
+        opacity: 0.7;
     }
     .credit:hover {
-    	opacity: 1;
+        opacity: 1;
     }
-
+    /* Cost type buttons */
+    .cost-buttons {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    .cost-btn {
+        flex: 1;
+        padding: 5px;
+        background: #333;
+        border: 1px solid #555;
+        color: #ddd;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .cost-btn.active {
+        background: #666;
+        border-color: #aaa;
+    }
 </style>
 </head>
 <body>
@@ -99,7 +118,6 @@
 <div class="items-container" id="items"></div>
 
 <button onclick="downloadReport()">Download as TXT</button>
-
 <button onclick="copyToClipboard()">Copy to Clipboard</button>
 
 <textarea id="output" readonly></textarea>
@@ -123,10 +141,10 @@ let itemsList = [
     { name: "Titanic Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
     { name: "Unstable Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
 
-    // Set ppotions and prices when possible
+    // Potions
     { name: "Blitz Potion", coins: "$200,000,000", shards: "250", stock: 3, category: "Potions" },
-	{ name: "Instability Potion", coins: "$200,000,000", shards: "150", stock: 3, category: "Potions" },
-	{ name: "Quake Potion", coins: "200,000,000", shards: "200", stock: 3, category: "Potions" }
+    { name: "Instability Potion", coins: "$200,000,000", shards: "150", stock: 3, category: "Potions" },
+    { name: "Quake Potion", coins: "$200,000,000", shards: "200", stock: 3, category: "Potions" }
 ];
 
 // Sort enchant books
@@ -168,10 +186,11 @@ for (let i = 0; i < 4; i++) {
             </optgroup>
         </select>
         <label>Cost Type:</label>
-        <select class="cost-type">
-            <option value="coins">Coins</option>
-            <option value="shards">Shards</option>
-        </select>
+        <div class="cost-buttons">
+            <button type="button" class="cost-btn active" data-type="coins">Coins</button>
+            <button type="button" class="cost-btn" data-type="shards">Shards</button>
+        </div>
+        <input type="hidden" class="cost-type" value="coins">
         <div class="stock-div">
             <label>Stock:</label>
             <input type="number" min="1" class="stock-input" value="1">
@@ -194,8 +213,8 @@ function updateStockField(selectElem) {
 
 function copyToClipboard() {
     const output = document.getElementById("output");
-    output.select(); // Select the text
-    output.setSelectionRange(0, 99999); // For mobile devices
+    output.select();
+    output.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(output.value);
 }
 
@@ -222,7 +241,7 @@ function updateReport() {
             const price = costType === "coins" ? itemData.coins : itemData.shards + " meteor shards";
             const line = { 
                 text: `• \`${stock}x ${itemName} - ${price}\``, 
-                sortValue: parseInt(itemData.coins.replace(/[^0-9]/g,"")) 
+                sortValue: parsePrice(itemData.coins) 
             };
             const category = itemData.category || "Other";
             categories[category].push(line);
@@ -238,7 +257,8 @@ function updateReport() {
     }
 
     const unixTime = Math.floor(Date.now() / 1000);
-    report += `**Report generated:** <t:${unixTime}:f>`;
+    report += `**Merchant Time:** <t:${unixTime}:f>\n\n`;
+    report += `Suggestion for dedicated merchant channel and ping: https://discord.com/channels/1391817778087858216/1406757447825358922`;
 
     document.getElementById("output").value = report.trim();
 }
@@ -261,11 +281,21 @@ document.querySelectorAll(".item-select").forEach(sel => {
         updateReport();
     });
 });
-document.querySelectorAll(".cost-type").forEach(sel => {
-    sel.addEventListener("change", updateReport);
-});
 document.querySelectorAll(".stock-input").forEach(input => {
     input.addEventListener("input", updateReport);
+});
+
+// Cost button handling
+document.querySelectorAll(".cost-buttons").forEach(group => {
+    const hiddenInput = group.nextElementSibling;
+    group.querySelectorAll(".cost-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            group.querySelectorAll(".cost-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            hiddenInput.value = btn.dataset.type;
+            updateReport();
+        });
+    });
 });
 </script>
 
@@ -273,4 +303,3 @@ document.querySelectorAll(".stock-input").forEach(input => {
 
 </body>
 </html>
-
