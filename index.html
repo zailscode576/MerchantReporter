@@ -107,6 +107,7 @@
 
 <label for="location">Merchant Location:</label>
 <select id="location">
+    <option value="">-- Select Location --</option>
     <option>Azuralite Oasis</option>
     <option>Caldera Island</option>
     <option>Fortune River</option>
@@ -220,8 +221,15 @@ function copyToClipboard() {
 
 function updateReport() {
     const location = document.getElementById("location").value;
-    let report = `**# Traveling Merchant Location and Stock**\n**Location: ${location}**\n\n`;
 
+    // stop if no location selected
+    if (!location) {
+        document.getElementById("output").value = "⚠ Please select a merchant location above.\n\nThe report will appear here once a location is chosen.";
+        return;
+    }
+
+    let report = `**# Traveling Merchant Location and Stock**\n**Location: ${location}**\n\n`;
+    
     const categories = {
         "Fragments": [],
         "Enchants": [],
