@@ -79,7 +79,19 @@
     .credit:hover {
         opacity: 1;
     }
-    /* Cost type buttons */
+    #haujenToggleBtn {
+        background: #2a2a3d;
+        border: 1px solid #555;
+        color: #bbb;
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    #haujenToggleBtn.active {
+        background: #555;
+        color: #fff;
+    }
     .cost-buttons {
         display: flex;
         gap: 5px;
@@ -142,16 +154,16 @@ let itemsList = [
     { name: "Titanic Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
     { name: "Unstable Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
 
-    // Potions
     { name: "Blitz Potion", coins: "$200,000,000", shards: "250", stock: 3, category: "Potions" },
     { name: "Instability Potion", coins: "$200,000,000", shards: "150", stock: 3, category: "Potions" },
     { name: "Quake Potion", coins: "$200,000,000", shards: "200", stock: 3, category: "Potions" }
 ];
 
-// Sort enchant books
+// Helpers
 function parsePrice(str) {
     return parseInt(str.replace(/[^0-9]/g, ""), 10);
 }
+
 let enchantBooks = itemsList.filter(i => i.category === "Enchants")
     .sort((a, b) => {
         let priceA = parsePrice(a.coins);
@@ -200,6 +212,7 @@ for (let i = 0; i < 4; i++) {
     container.appendChild(div);
 }
 
+// Stock handling
 function updateStockField(selectElem) {
     const selectedItem = itemsList.find(item => item.name === selectElem.value);
     const stockDiv = selectElem.parentElement.querySelector(".stock-div");
@@ -212,6 +225,7 @@ function updateStockField(selectElem) {
     }
 }
 
+// Copy
 function copyToClipboard() {
     const output = document.getElementById("output");
     output.select();
@@ -219,17 +233,25 @@ function copyToClipboard() {
     navigator.clipboard.writeText(output.value);
 }
 
+// Report
 function updateReport() {
     const location = document.getElementById("location").value;
 
-    // stop if no location selected
     if (!location) {
-        document.getElementById("output").value = "⚠ Please select a merchant location above.\n\nThe report will appear here once a location is chosen.";
+        document.getElementById("output").value =
+            "⚠ Please select a merchant location above.\n\nThe report will appear here once a location is chosen.";
         return;
     }
 
-    let report = `**# Traveling Merchant Location and Stock**\n**Location: ${location}**\n\n`;
-    
+    const haujenMode = localStorage.getItem("haujenMode") === "true";
+    let report = "";
+
+    if (haujenMode) {
+        report += `Travelling Merchant Location: **${location}**\n\n`;
+    } else {
+        report += `**# Traveling Merchant Location and Stock**\n**Location: ${location}**\n\n`;
+    }
+
     const categories = {
         "Fragments": [],
         "Enchants": [],
@@ -246,7 +268,7 @@ function updateReport() {
 
         if (itemName) {
             const itemData = itemsList.find(item => item.name === itemName);
-            const price = costType === "coins" ? itemData.coins : itemData.shards + " meteor shards";
+            const price = costType === "coins" ? itemData.coins : itemData.shards + " Meteor Shards";
             const line = { 
                 text: `• \`${stock}x ${itemName} - ${price}\``, 
                 sortValue: parsePrice(itemData.coins) 
@@ -256,21 +278,44 @@ function updateReport() {
         }
     });
 
-    for (let cat of ["Fragments", "Enchants", "Potions", "Other"]) {
-        if (categories[cat].length > 0) {
-            let displayName = cat === "Fragments" ? "Event Summons" : cat;
-            categories[cat].sort((a, b) => b.sortValue - a.sortValue);
-            report += `**${displayName}:**\n${categories[cat].map(item => item.text).join("\n")}\n\n`;
-        }
-    }
+    if (haujenMode) {
+		// Haujen Mode: just 2 categories
+		let enchantments = categories["Enchants"];
+		let misc = [
+			...categories["Fragments"],
+			...categories["Potions"],
+			...categories["Other"]
+		];
+
+		if (enchantments.length > 0) {
+			enchantments.sort((a, b) => b.sortValue - a.sortValue);
+			report += `**Book Enchantment(s):**\n${enchantments.map(item => item.text).join("\n")}\n\n`;
+		}
+		if (misc.length > 0) {
+			misc.sort((a, b) => b.sortValue - a.sortValue);
+			report += `**Miscellaneous:**\n${misc.map(item => item.text).join("\n")}\n\n`;
+		}
+	} else {
+		// Normal mode: keep full categories
+		for (let cat of ["Fragments", "Enchants", "Potions", "Other"]) {
+			if (categories[cat].length > 0) {
+				let displayName = cat === "Fragments" ? "Event Summons" : cat;
+				categories[cat].sort((a, b) => b.sortValue - a.sortValue);
+				report += `**${displayName}:**\n${categories[cat].map(item => item.text).join("\n")}\n\n`;
+			}
+		}
+	}
 
     const unixTime = Math.floor(Date.now() / 1000);
-    report += `**Merchant Time:** <t:${unixTime}:f>\n\n`;
-    report += `Suggestion for dedicated merchant channel and ping: https://discord.com/channels/1391817778087858216/1406757447825358922`;
+	if (!haujenMode) {
+		report += `**Report generated:** <t:${unixTime}:f>\n\n`;
+		report += `Vote for dedicated Merchant Channel: https://discord.com/channels/1391817778087858216/1406757447825358922`;
+	}
 
     document.getElementById("output").value = report.trim();
 }
 
+// Download
 function downloadReport() {
     const text = document.getElementById("output").value;
     if (!text) return alert("Enter merchant data first!");
@@ -305,9 +350,33 @@ document.querySelectorAll(".cost-buttons").forEach(group => {
         });
     });
 });
+
+// Haujen Mode toggle persistence
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("haujenToggleBtn");
+    const saved = localStorage.getItem("haujenMode") === "true";
+
+    // Restore saved mode
+    if (saved) {
+        btn.classList.add("active");
+        btn.textContent = "Disable Haujen Mode";
+    } else {
+        btn.textContent = "Enable Haujen Mode";
+    }
+
+    // Toggle click handler
+    btn.addEventListener("click", () => {
+        const isActive = btn.classList.toggle("active");
+        localStorage.setItem("haujenMode", isActive ? "true" : "false");
+        btn.textContent = isActive ? "Disable Haujen Mode" : "Enable Haujen Mode";
+        updateReport();
+    });
+});
 </script>
 
-<div class="credit">Made by zailscode576</div>
+<div class="credit">
+    Made by zailscode576 | <button id="haujenToggleBtn">Toggle Haujen Mode</button>
+</div>
 
 </body>
 </html>
