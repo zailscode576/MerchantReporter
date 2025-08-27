@@ -37,6 +37,7 @@
     }
     .items-container {
         display: flex;
+        flex-wrap: wrap;
         gap: 10px;
         margin-top: 10px;
     }
@@ -57,7 +58,7 @@
     }
     textarea {
         width: 100%;
-        height: 160px;
+        height: 180px;
         margin-top: 10px;
         font-family: monospace;
         font-size: 15px;
@@ -111,6 +112,17 @@
         background: #666;
         border-color: #aaa;
     }
+    /* Highlight invalid fields */
+    select.invalid {
+        border-color: #d66;
+        background: #3a1e1e;
+    }
+    #clearBtn {
+        background: #552e2e;
+    }
+    #clearBtn:hover {
+        background: #773e3e;
+    }
 </style>
 </head>
 <body>
@@ -130,24 +142,25 @@
 
 <div class="items-container" id="items"></div>
 
-<button onclick="downloadReport()">Download as TXT</button>
-<button onclick="copyToClipboard()">Copy to Clipboard</button>
+<button onclick="copyToClipboard()" id="copyBtn">Copy to Clipboard</button>
 
 <textarea id="output" readonly></textarea>
 
+<button id="clearBtn" onclick="clearForm()">Clear All</button>
+
 <script>
 let itemsList = [
-    { name: "Perfect Reforge Token", coins: "$50,000,000,000", shards: "5,000", stock: 1 },
-    { name: "Traveler's Backpack", coins: "$1,000,000,000", shards: "1,000", stock: 3 },
-    
+    { name: "Perfect Reforge Token", coins: "$50,000,000,000", shards: "5000", stock: 1 },
+    { name: "Traveler's Backpack", coins: "$1,000,000,000", shards: "1000", stock: 3 },
+
     { name: "Solar Token", coins: "$500,000,000", shards: "600", stock: 1, category: "Fragments" },
-    { name: "Meteor Fragment", coins: "$5,000,000,000", shards: "1,500", stock: 1, category: "Fragments" },
+    { name: "Meteor Fragment", coins: "$5,000,000,000", shards: "1500", stock: 1, category: "Fragments" },
 	{ name: "Void Shard", coins: "?", shards: "4,000", stock: 1, category: "Fragments" },
 
-    { name: "Prismatic Enchant Book", coins: "$20,000,000,000", shards: "5,000", stock: 1, category: "Enchants" },
-    { name: "Infernal Enchant Book", coins: "$20,000,000,000", shards: "5,000", stock: 1, category: "Enchants" },
-    { name: "Cosmic Enchant Book", coins: "$10,000,000,000", shards: "2,000", stock: 1, category: "Enchants" },
-    { name: "Divine Enchant Book", coins: "$10,000,000,000", shards: "2,000", stock: 1, category: "Enchants" },
+    { name: "Prismatic Enchant Book", coins: "$20,000,000,000", shards: "5000", stock: 1, category: "Enchants" },
+    { name: "Infernal Enchant Book", coins: "$20,000,000,000", shards: "5000", stock: 1, category: "Enchants" },
+    { name: "Cosmic Enchant Book", coins: "$10,000,000,000", shards: "2000", stock: 1, category: "Enchants" },
+    { name: "Divine Enchant Book", coins: "$10,000,000,000", shards: "2000", stock: 1, category: "Enchants" },
     { name: "Blessed Enchant Book", coins: "$200,000,000", shards: "750", stock: 1, category: "Enchants" },
     { name: "Destructive Enchant Book", coins: "$200,000,000", shards: "750", stock: 1, category: "Enchants" },
     { name: "Midas Enchant Book", coins: "$200,000,000", shards: "750", stock: 1, category: "Enchants" },
@@ -155,7 +168,7 @@ let itemsList = [
     { name: "Titanic Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
     { name: "Unstable Enchant Book", coins: "$50,000,000", shards: "400", stock: 1, category: "Enchants" },
 
-    { name: "Blitz Potion", coins: "$200,000,000", shards: "300", stock: 3, category: "Potions" },
+    { name: "Blitz Potion", coins: "$200,000,000", shards: "250", stock: 3, category: "Potions" },
     { name: "Instability Potion", coins: "$200,000,000", shards: "150", stock: 3, category: "Potions" },
     { name: "Quake Potion", coins: "$200,000,000", shards: "200", stock: 3, category: "Potions" }
 ];
@@ -165,20 +178,14 @@ function parsePrice(str) {
     return parseInt(str.replace(/[^0-9]/g, ""), 10);
 }
 
+// UI build
 let enchantBooks = itemsList.filter(i => i.category === "Enchants")
-    .sort((a, b) => {
-        let priceA = parsePrice(a.coins);
-        let priceB = parsePrice(b.coins);
-        if (priceA !== priceB) return priceB - priceA;
-        return a.name.localeCompare(b.name);
-    });
-
+    .sort((a, b) => parsePrice(b.coins) - parsePrice(a.coins) || a.name.localeCompare(b.name));
 let fragments = itemsList.filter(i => i.category === "Fragments");
 let potions = itemsList.filter(i => i.category === "Potions");
 let other = itemsList.filter(i => !i.category);
 
 const container = document.getElementById("items");
-
 for (let i = 0; i < 4; i++) {
     const div = document.createElement("div");
     div.className = "item-block";
@@ -213,31 +220,65 @@ for (let i = 0; i < 4; i++) {
     container.appendChild(div);
 }
 
-// Stock handling
-function updateStockField(selectElem) {
-    const selectedItem = itemsList.find(item => item.name === selectElem.value);
-    const stockDiv = selectElem.parentElement.querySelector(".stock-div");
-    if (selectedItem && selectedItem.stock === 1) {
-		stockDiv.style.display = "none";
-	} else {
-		stockDiv.style.display = "block";
-		const stockInput = stockDiv.querySelector(".stock-input");
-		stockInput.value = selectedItem && selectedItem.stock !== 1 ? selectedItem.stock : 1;
-	}
-}
+// Copy feedback
+let copyResetTimer; // store timer globally
 
-// Copy
 function copyToClipboard() {
     const output = document.getElementById("output");
     output.select();
     output.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(output.value);
+
+    const btn = document.getElementById("copyBtn");
+    const oldText = "Copy to Clipboard";
+
+    btn.textContent = "✅ Copied!";
+    clearTimeout(copyResetTimer); // clear any previous timer
+    copyResetTimer = setTimeout(() => {
+        btn.textContent = oldText;
+    }, 1000);
 }
 
-// Report
-function updateReport() {
-    const location = document.getElementById("location").value;
+// Clear all
+function clearForm() {
+    document.getElementById("location").value = "";
+    document.querySelectorAll(".item-select").forEach(sel => sel.value = "");
+    document.querySelectorAll(".cost-type").forEach(inp => inp.value = "coins");
+    document.querySelectorAll(".stock-input").forEach(inp => inp.value = 1);
+    updateReport();
+}
 
+// Stock handling
+function updateStockField(selectElem) {
+    const selectedItem = itemsList.find(item => item.name === selectElem.value);
+    const stockDiv = selectElem.parentElement.querySelector(".stock-div");
+    if (selectedItem && selectedItem.stock === 1) {
+        stockDiv.style.display = "none";
+        stockDiv.querySelector(".stock-input").value = 1;
+    } else {
+        stockDiv.style.display = "block";
+        const stockInput = stockDiv.querySelector(".stock-input");
+        stockInput.value = selectedItem && selectedItem.stock !== 1 ? selectedItem.stock : 1;
+    }
+}
+
+// Highlight invalid
+function highlightInvalid() {
+    const location = document.getElementById("location");
+    if (!location.value) location.classList.add("invalid");
+    else location.classList.remove("invalid");
+
+    document.querySelectorAll(".item-select").forEach(sel => {
+        if (!sel.value) sel.classList.add("invalid");
+        else sel.classList.remove("invalid");
+    });
+}
+
+// Report builder
+function updateReport() {
+    highlightInvalid();
+
+    const location = document.getElementById("location").value;
     if (!location) {
         document.getElementById("output").value =
             "⚠ Please select a merchant location above.\n\nThe report will appear here once a location is chosen.";
@@ -253,15 +294,9 @@ function updateReport() {
         report += `**# Traveling Merchant Location and Stock**\n**Location: ${location}**\n\n`;
     }
 
-    const categories = {
-        "Fragments": [],
-        "Enchants": [],
-        "Potions": [],
-        "Other": []
-    };
+    const categories = { "Fragments": [], "Enchants": [], "Potions": [], "Other": [] };
 
-    const itemBlocks = document.querySelectorAll(".item-block");
-    itemBlocks.forEach(block => {
+    document.querySelectorAll(".item-block").forEach(block => {
         const itemName = block.querySelector(".item-select").value;
         const costType = block.querySelector(".cost-type").value;
         const stockDiv = block.querySelector(".stock-div");
@@ -270,64 +305,41 @@ function updateReport() {
         if (itemName) {
             const itemData = itemsList.find(item => item.name === itemName);
             const price = costType === "coins" ? itemData.coins : itemData.shards + " Meteor Shards";
-            const line = { 
-                text: `• \`${stock}x ${itemName} - ${price}\``, 
-                sortValue: parsePrice(itemData.coins) 
-            };
+            const line = { text: `• \`${stock}x ${itemName} - ${price}\``, sortValue: parsePrice(itemData.coins) };
             const category = itemData.category || "Other";
             categories[category].push(line);
         }
     });
 
     if (haujenMode) {
-		// Haujen Mode: just 2 categories
-		let enchantments = categories["Enchants"];
-		let misc = [
-			...categories["Fragments"],
-			...categories["Potions"],
-			...categories["Other"]
-		];
+        let enchantments = categories["Enchants"];
+        let misc = [...categories["Fragments"], ...categories["Potions"], ...categories["Other"]];
 
-		if (enchantments.length > 0) {
-			enchantments.sort((a, b) => b.sortValue - a.sortValue);
-			report += `**Book Enchantment(s):**\n${enchantments.map(item => item.text).join("\n")}\n\n`;
-		}
-		if (misc.length > 0) {
-			misc.sort((a, b) => b.sortValue - a.sortValue);
-			report += `**Miscellaneous:**\n${misc.map(item => item.text).join("\n")}\n\n`;
-		}
-	} else {
-		// Normal mode: keep full categories
-		for (let cat of ["Fragments", "Enchants", "Potions", "Other"]) {
-			if (categories[cat].length > 0) {
-				let displayName = cat === "Fragments" ? "Event Summons" : cat;
-				categories[cat].sort((a, b) => b.sortValue - a.sortValue);
-				report += `**${displayName}:**\n${categories[cat].map(item => item.text).join("\n")}\n\n`;
-			}
-		}
-	}
-
-    const unixTime = Math.floor(Date.now() / 1000);
-	if (!haujenMode) {
-		report += `**Report generated:** <t:${unixTime}:f>\n\n`;
-		report += `Vote for dedicated Merchant Channel: https://discord.com/channels/1391817778087858216/1406757447825358922`;
-	}
+        if (enchantments.length > 0) {
+            enchantments.sort((a, b) => b.sortValue - a.sortValue);
+            report += `**Book Enchantment(s):**\n${enchantments.map(i => i.text).join("\n")}\n\n`;
+        }
+        if (misc.length > 0) {
+            misc.sort((a, b) => b.sortValue - a.sortValue);
+            report += `**Miscellaneous:**\n${misc.map(i => i.text).join("\n")}\n\n`;
+        }
+    } else {
+        for (let cat of ["Fragments", "Enchants", "Potions", "Other"]) {
+            if (categories[cat].length > 0) {
+                let displayName = cat === "Fragments" ? "Event Summons" : cat;
+                categories[cat].sort((a, b) => b.sortValue - a.sortValue);
+                report += `**${displayName}:**\n${categories[cat].map(i => i.text).join("\n")}\n\n`;
+            }
+        }
+        const unixTime = Math.floor(Date.now() / 1000);
+        report += `**Report generated:** <t:${unixTime}:f>\n\n`;
+        report += `Vote for dedicated Merchant Channel: https://discord.com/channels/1391817778087858216/1406757447825358922`;
+    }
 
     document.getElementById("output").value = report.trim();
 }
 
-// Download
-function downloadReport() {
-    const text = document.getElementById("output").value;
-    if (!text) return alert("Enter merchant data first!");
-    const blob = new Blob([text], { type: "text/plain" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "merchant_report.txt";
-    a.click();
-}
-
-// Live updates
+// Event listeners
 document.getElementById("location").addEventListener("change", updateReport);
 document.querySelectorAll(".item-select").forEach(sel => {
     sel.addEventListener("change", function() {
@@ -338,8 +350,6 @@ document.querySelectorAll(".item-select").forEach(sel => {
 document.querySelectorAll(".stock-input").forEach(input => {
     input.addEventListener("input", updateReport);
 });
-
-// Cost button handling
 document.querySelectorAll(".cost-buttons").forEach(group => {
     const hiddenInput = group.nextElementSibling;
     group.querySelectorAll(".cost-btn").forEach(btn => {
@@ -352,26 +362,23 @@ document.querySelectorAll(".cost-buttons").forEach(group => {
     });
 });
 
-// Haujen Mode toggle persistence
+// Haujen toggle
 document.addEventListener("DOMContentLoaded", () => {
     const btn = document.getElementById("haujenToggleBtn");
     const saved = localStorage.getItem("haujenMode") === "true";
-
-    // Restore saved mode
     if (saved) {
         btn.classList.add("active");
         btn.textContent = "Disable Haujen Mode";
     } else {
         btn.textContent = "Enable Haujen Mode";
     }
-
-    // Toggle click handler
     btn.addEventListener("click", () => {
         const isActive = btn.classList.toggle("active");
         localStorage.setItem("haujenMode", isActive ? "true" : "false");
         btn.textContent = isActive ? "Disable Haujen Mode" : "Enable Haujen Mode";
         updateReport();
     });
+    updateReport(); // auto update on load
 });
 </script>
 
@@ -381,6 +388,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
-
-
-
