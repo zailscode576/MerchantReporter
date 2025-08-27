@@ -1,1 +1,1 @@
-It allows anyone to easily send in the merchant location and stock to send in a discord server. Would be great if someone could make a discord bot for this so nobody has to report this manually anymore!
+It allows anyone to easily send in the merchant location and stock to send in a discord server. ~~Would be great if someone could make a discord bot for this so nobody has to report this manually anymore!~~ Apparently dont make a discord bot because you will get banned.
